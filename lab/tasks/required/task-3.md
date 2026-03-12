@@ -81,7 +81,7 @@ Fix the failing question, re-run, move on to the next one.
 > - Locally, `run_eval.py` checks answers with simple keyword matching.
 > - The autochecker bot uses the same keyword checks, but for open-ended reasoning questions (e.g., "explain the request lifecycle") it uses **LLM-based judging** with a rubric — a stricter and more accurate evaluation.
 > - The bot also verifies that your agent used the **correct tools** (e.g., `query_api` for data questions, `read_file` for code questions).
-> - You need **≥75% overall** (local + hidden questions combined) to pass.
+> - You need to pass a minimum threshold overall (local + hidden questions combined).
 
 ### Debugging workflow
 
@@ -128,5 +128,5 @@ Add 2 regression tests for system agent tools. Example questions:
 - [ ] `run_eval.py` passes all 10 local questions.
 - [ ] `AGENT.md` documents the final architecture and lessons learned (at least 200 words).
 - [ ] 2 tool-calling regression tests exist and pass.
-- [ ] The agent passes the autochecker bot benchmark (≥75%).
+- [ ] The agent passes the autochecker bot benchmark.
 - [ ] [Git workflow](../../../wiki/git-workflow.md): issue `[Task] The System Agent`, branch, PR with `Closes #...`, partner approval, merge.

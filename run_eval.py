@@ -19,7 +19,7 @@ Note:
     The autochecker bot tests ADDITIONAL hidden questions not shown here.
     Some questions use LLM-based judging on the bot side for more accurate
     scoring (locally they fall back to simple keyword matching).
-    You need >=75% overall (local + hidden) to pass.
+    You need to pass a minimum threshold overall (local + hidden).
 """
 
 import argparse
@@ -299,7 +299,7 @@ def main():
             print(
                 f"\n{YELLOW}Note: The autochecker bot tests {index} additional hidden questions"
                 f" and may use LLM-based judging for open-ended answers."
-                f" You need >=75% overall to pass.{RESET}"
+                f" You need to pass a minimum threshold overall.{RESET}"
             )
             break
 
