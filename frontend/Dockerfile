@@ -5,12 +5,13 @@
 # A less portable solution: download image through a cache proxy provided by the University.
 # This solution is necessary to avoid "Too many requests" errors.
 # This solution won't work outside the University network.
-FROM harbor.pg.innopolis.university/docker-hub-cache/node:22-alpine AS builder
+FROM harbor.pg.innopolis.university/docker-hub-cache/node:25-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN npm install -g pnpm
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run build
