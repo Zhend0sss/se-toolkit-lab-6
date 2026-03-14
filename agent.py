@@ -3,7 +3,7 @@ import os
 import re
 import sys
 import urllib.request
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 
 MAX_TOOL_CALLS = 25
 MAX_ANSWER_LEN = 2000
@@ -38,9 +38,10 @@ def list_files(path: str) -> str:
 
 
 def query_api(method: str, path: str, body: str = None) -> str:
-    primary_base_url = os.environ.get("AGENT_API_BASE_URL", "http://localhost:42002").rstrip("/")
+    base_url = os.environ.get("AGENT_API_BASE_URL", "http://localhost:42002").rstrip("/")
     if not path.startswith("/"):
         path = "/" + path
+    url = base_url + path
 
     lms_key = os.environ.get("LMS_API_KEY", "")
     headers = {}
@@ -52,39 +53,17 @@ def query_api(method: str, path: str, body: str = None) -> str:
         data = body.encode("utf-8")
         headers["Content-Type"] = "application/json"
 
-    # Try configured URL first, then common local ports used by this lab setup.
-    candidates = [primary_base_url]
-    app_host_port = os.environ.get("APP_HOST_PORT", "").strip()
-    if app_host_port:
-        candidates.append(f"http://localhost:{app_host_port}")
-    candidates.extend(["http://localhost:42001", "http://localhost:8000"])
-
-    seen = set()
-    last_error = "Unknown connection error"
-    for base_url in candidates:
-        base_url = base_url.rstrip("/")
-        if base_url in seen:
-            continue
-        seen.add(base_url)
-
-        url = base_url + path
-        req = urllib.request.Request(url, data=data, method=method.upper(), headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=20) as response:
-                resp_body = response.read().decode("utf-8")
-                status = response.getcode()
-                return json.dumps({"status_code": status, "body": resp_body})
-        except HTTPError as err:
-            resp_body = err.read().decode("utf-8")
-            return json.dumps({"status_code": err.code, "body": resp_body})
-        except URLError as err:
-            last_error = str(err)
-            continue
-        except Exception as exc:
-            last_error = str(exc)
-            continue
-
-    return f"Error: {last_error}"
+    req = urllib.request.Request(url, data=data, method=method.upper(), headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            resp_body = response.read().decode("utf-8")
+            status = response.getcode()
+            return json.dumps({"status_code": status, "body": resp_body})
+    except HTTPError as err:
+        resp_body = err.read().decode("utf-8")
+        return json.dumps({"status_code": err.code, "body": resp_body})
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
 def _record_tool_call(log: list[dict], tool: str, args: dict, result: str) -> None:
@@ -265,11 +244,8 @@ def _items_without_auth_status(log: list[dict]) -> str:
     parsed = _safe_json_loads(raw)
     if isinstance(parsed, dict):
         code = parsed.get("status_code")
-        if code in (500, 502, 503):
-            # Fallback for local evaluation without Docker setup
-            code = 401
         return f"Without Authorization header, /items/ returns HTTP {code}."
-    return "Without Authorization header, /items/ returns HTTP 401."
+    return "Could not determine unauthorized status code."
 
 
 def _analytics_bug_answer(log: list[dict]) -> tuple[str, str]:
@@ -446,8 +422,7 @@ def main():
     if source:
         output["source"] = source
 
-    # Keep output ASCII-safe so subprocess pipes on Windows don't fail encoding.
-    print(json.dumps(output, ensure_ascii=True))
+    print(json.dumps(output, ensure_ascii=False))
 
 
 if __name__ == "__main__":
