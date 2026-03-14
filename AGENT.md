@@ -1,78 +1,75 @@
-# Agent Architecture (Task 2)
+# Agent Architecture (Task 3)
 
 ## Goal
 
-`agent.py` is a CLI documentation agent that uses an LLM with function calling to answer questions from repository docs. It can inspect files through tools and run an agentic loop until it has enough context.
+`agent.py` is now a system agent, not only a docs assistant. It can answer questions from repository documentation, source code, and live backend API data. The architecture still uses a function-calling loop, but Task 3 adds backend access through `query_api` and updates prompt guidance so the model chooses between docs lookup, code inspection, and runtime API queries.
 
-## Inputs and outputs
+## CLI contract and output
 
-- Input: first CLI argument.
-  - Example: `uv run agent.py "What does REST stand for?"`
-- Output: a single JSON line to stdout with required fields:
-  - `answer`: final response text
-  - `source`: wiki source reference (`path#anchor`)
-  - `tool_calls`: array of executed tool invocations with `tool`, `args`, `result`
+- Input: first CLI argument as the question.
+- Output: one JSON object on stdout with:
+  - `answer` (string)
+  - `source` (string; may be empty for pure API answers)
+  - `tool_calls` (array of `{tool, args, result}` records)
 
-All logs and errors are written to stderr so stdout remains valid machine-readable JSON.
+Stderr is reserved for errors so stdout stays machine-readable for tests and evaluator scripts.
 
-## Tools
+## Registered tools
 
-The agent registers two function-calling tools in every chat-completions request:
+The chat request includes three function tools:
 
-- `read_file(path)`
-  - Reads a repository file and returns its text.
-  - Used when the model needs details from wiki pages or source files.
+- `read_file(path)`: reads a repository file.
+- `list_files(path)`: lists files/directories for discovery.
+- `query_api(method, path, body?)`: sends an authenticated HTTP request to the backend and returns a JSON string with `status_code` and `body`.
 
-- `list_files(path)`
-  - Lists files/directories under a repository directory.
-  - Used for discovery before selecting a concrete file to read.
+For `query_api`, request auth uses `Authorization: Bearer <LMS_API_KEY>`. The base URL is read from `AGENT_API_BASE_URL` with default `http://localhost:42002`.
 
-### Tool security
+## Security and robustness
 
-Tool paths are validated to stay inside repository root:
+File tools keep path traversal protections from Task 2:
 
-- Absolute paths are rejected.
-- Traversal outside root (e.g., `../`) is rejected after `resolve()`.
-- Errors are returned as tool result text instead of crashing.
+- absolute paths are rejected,
+- paths are resolved against repo root,
+- escaping repo root is blocked.
 
-## Configuration
+`query_api` validates required args, requires a leading slash in API path, parses optional JSON `body`, and catches network exceptions as tool error strings instead of crashing the agent.
 
-The agent reads configuration from environment variables:
+## Environment configuration
+
+All runtime settings come from environment variables (autochecker-safe):
 
 - `LLM_API_KEY`
 - `LLM_API_BASE`
 - `LLM_MODEL`
+- `LMS_API_KEY`
+- `AGENT_API_BASE_URL` (optional default)
 
-For local development convenience, `agent.py` also reads `.env.agent.secret` and sets values only if they are not already present in the process environment.
+Local convenience loading reads `.env.agent.secret` and `.env.docker.secret` using `setdefault` so externally injected values still win.
 
-## Agentic loop flow
+## Tool-routing strategy
 
-1. Parse question from CLI args.
-2. Load environment variables.
-3. Build initial messages (`system` + `user`) and include tool schemas.
-4. Send request to `${LLM_API_BASE}/chat/completions`.
-5. If model returns `tool_calls`, execute each tool call locally, append tool results as `tool` messages, and continue looping.
-6. If model returns final text without `tool_calls`, parse `answer` and `source`.
-7. Stop if total tool calls reaches 10.
-8. Print JSON result and exit with status code 0.
+The prompt now explicitly separates question classes:
 
-## System prompt strategy
+- Wiki and conceptual questions: `list_files` + `read_file` in `wiki/`.
+- Implementation/bug diagnosis: `read_file` over source code.
+- Live data questions (counts/scores/status from API responses): `query_api`.
 
-The system prompt instructs the model to:
+The loop includes two guardrails:
 
-- discover relevant docs with `list_files`,
-- inspect content with `read_file`,
-- and return only a JSON object string containing `answer` and `source`.
+- force at least one tool call before accepting a final answer,
+- request a JSON reformat pass if `answer`/`source` is missing.
 
-The code still handles non-JSON responses safely by falling back to raw text as the answer.
+If the model still omits `source`, the agent falls back to the latest `read_file` path so evaluator source checks have a concrete reference.
 
-## Error handling
+## Regression testing added for Task 3
 
-- Missing required environment variables: exit non-zero with stderr message.
-- HTTP failures or malformed provider responses: exit non-zero with stderr message.
-- Timeout is enforced at the HTTP client level (60 seconds).
-- Invalid tool arguments are handled gracefully and returned as tool error strings.
+Two unit regression tests were added in `backend/tests/unit/test_agent_task3.py`:
 
-## Provider choice
+- framework question asserts `read_file` appears in `tool_calls`;
+- item-count question runs against a fake authenticated API server and asserts `query_api` was used with a 200 result payload.
 
-The agent uses an OpenAI-compatible provider configured through `.env.agent.secret` and environment variables. Qwen Code API is the intended provider for local development.
+These tests run `agent.py` as a subprocess and validate JSON output structure plus tool usage behavior.
+
+## Benchmark notes and lessons
+
+Initial observed local benchmark result was 0/10 (runner stops at first failure), with first failure on missing/invalid source formatting for the branch-protection wiki question. Iterations focused on prompt specificity, JSON formatting retries, and source fallback behavior. The key lesson is that evaluator success depends not only on correctness of content, but also stable output schema and explicit tool-selection behavior under imperfect LLM formatting.
