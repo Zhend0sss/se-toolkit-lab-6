@@ -6,7 +6,7 @@ parameter to filter results by lab (e.g., "lab-01").
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import case, func
+from sqlalchemy import case, cast, func, Numeric
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -107,7 +107,7 @@ async def get_pass_rates(
     results = []
     for task in sorted(tasks, key=lambda t: t.title):
         stmt = select(
-            func.round(func.avg(InteractionLog.score), 1).label("avg_score"),
+            func.round(cast(func.avg(InteractionLog.score), Numeric), 1).label("avg_score"),
             func.count().label("attempts"),
         ).where(
             InteractionLog.item_id == task.id,
@@ -161,7 +161,7 @@ async def get_groups(
     stmt = (
         select(
             Learner.student_group.label("group"),
-            func.round(func.avg(InteractionLog.score), 1).label("avg_score"),
+            func.round(cast(func.avg(InteractionLog.score), Numeric), 1).label("avg_score"),
             func.count(func.distinct(InteractionLog.learner_id)).label("students"),
         )
         .join(Learner, InteractionLog.learner_id == Learner.id)

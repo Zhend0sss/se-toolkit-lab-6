@@ -125,7 +125,7 @@ function Dashboard({ token }: { token: string }) {
       <div className="lab-selector">
         <label>Lab: </label>
         <select value={lab} onChange={(e) => setLab(e.target.value)}>
-          {['lab-01', 'lab-02', 'lab-03', 'lab-04', 'lab-05'].map((l) => (
+          {['lab-01', 'lab-02', 'lab-03', 'lab-04', 'lab-05', 'lab-06'].map((l) => (
             <option key={l} value={l}>
               {l}
             </option>

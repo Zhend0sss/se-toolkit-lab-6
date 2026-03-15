@@ -34,29 +34,30 @@ uv run agent.py "What does REST stand for?"
 
 Your agent needs an LLM that supports the OpenAI-compatible chat completions API. You are free to use any provider.
 
-**Recommended: [Qwen Code API](../../wiki/qwen.md#set-up-the-qwen-code-api-remote-machine)**
+**Recommended: [Qwen Code API](../../../wiki/qwen.md#set-up-the-qwen-code-api-remote-machine)**
 
-[Qwen Code](../../wiki/qwen.md#what-is-qwen-code) provides **1000 free requests per day**, works from Russia, and requires no credit card. Follow the [setup instructions](../setup-simple.md#17-set-up-llm-access-qwen-code-api) to deploy it on your VM.
+[Qwen Code](../../../wiki/qwen.md#what-is-qwen-code) provides **1000 free requests per day**, works from Russia, and requires no credit card. Follow the [setup instructions](../setup-simple.md#17-set-up-llm-access-qwen-code-api) to deploy it on your VM.
 
-| Model | Tool calling | Notes |
-|-------|-------------|-------|
-| `qwen3-coder-plus` | Strong | Recommended, default in `.env.agent.example` |
-| `coder-model` | Strong | Qwen 3.5 Plus |
+| Model              | Tool calling | Notes                                        |
+| ------------------ | ------------ | -------------------------------------------- |
+| `qwen3-coder-plus` | Strong       | Recommended, default in `.env.agent.example` |
+| `coder-model`      | Strong       | Qwen 3.5 Plus                                |
 
 <details><summary><b>Alternative: OpenRouter (click to open)</b></summary>
 
 [OpenRouter](https://openrouter.ai) offers free models with no credit card required.
 
-| Model | Tool calling | Notes |
-|-------|-------------|-------|
-| `meta-llama/llama-3.3-70b-instruct:free` | Strong | Good alternative |
-| `qwen/qwen3-coder:free` | Good | Alternative |
+| Model                                    | Tool calling | Notes            |
+| ---------------------------------------- | ------------ | ---------------- |
+| `meta-llama/llama-3.3-70b-instruct:free` | Strong       | Good alternative |
+| `qwen/qwen3-coder:free`                  | Good         | Alternative      |
 
 > [!WARNING]
 > **OpenRouter free-tier limitations:**
+>
 > - Free models have a **50 requests per day** limit per account.
 > - Free models can be **temporarily unavailable** due to upstream provider load (`429` errors).
-> - The autochecker runs 20 questions against your agent — free-tier rate limits may cause failures.
+> - The autochecker runs 10 questions against your agent — free-tier rate limits may cause failures.
 > - If you use OpenRouter, plan your testing carefully: use `run_eval.py --index N` to test one question at a time.
 
 </details>
