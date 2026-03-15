@@ -8,6 +8,11 @@ from urllib.error import HTTPError, URLError
 MAX_TOOL_CALLS = 25
 MAX_ANSWER_LEN = 2000
 
+def query_api(method: str, path: str, body: str = None) -> str:
+    base_url = os.environ.get("AGENT_API_BASE_URL", "http://localhost:42002").rstrip("/")
+    if not path.startswith("/"):
+        path = "/" + path
+    url = base_url + path
 
 def read_file(path: str) -> str:
     if ".." in path or path.startswith("/"):
